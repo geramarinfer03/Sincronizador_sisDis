@@ -9,7 +9,9 @@ package ac.cr.una.sincronizador;
  *
  * @author jose
  */
+import java.io.File;
 import org.zeromq.ZMQ;
+
 
 public class hwclient {
 
@@ -22,7 +24,7 @@ public class hwclient {
 
         ZMQ.Socket requester = context.socket(ZMQ.REQ);
         requester.connect("tcp://localhost:5555");
-
+       
         for (int requestNbr = 0; requestNbr != 10; requestNbr++) {
             String request = "Hello";
             System.out.println("Sending Hello " + requestNbr);
