@@ -132,6 +132,7 @@ public class Servidor {
                     if(server_file.getVersion() < archivo.getVersion()){
                         recibirActualizacion(server_file, outMsg, solicitudArchivos);
                     }
+                    //version ==
                 
                 }
 
