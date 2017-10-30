@@ -24,7 +24,7 @@ public class TestMD5map {
     private final Utils_file utils_methods;
     public TestMD5map() {
             
-        utils_methods = new Utils_file();
+        utils_methods = Utils_file.getInstance();
     }
     
     @Test
@@ -33,7 +33,7 @@ public class TestMD5map {
         File dirOrigen  = new File(path);
         
         ArchivoInfo carpeta = new ArchivoInfo(dirOrigen.getName(), new Date(dirOrigen.lastModified()), 0
-                , dirOrigen.isDirectory(), 0);
+                , dirOrigen.isDirectory(), 0, false);
         
         carpeta.toString();
         

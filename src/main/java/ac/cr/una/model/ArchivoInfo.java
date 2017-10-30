@@ -21,16 +21,20 @@ public class ArchivoInfo implements Serializable{
     private long file_size;
     private boolean is_dir;
     private int version;
+    private boolean modified;
+    private int action; //0 create/update 1 delete
 
     public ArchivoInfo() {
     }
 
-    public ArchivoInfo(String fileName, Date fecha_modificacion, long file_size, boolean is_dir, int version) {
+    public ArchivoInfo(String fileName, Date fecha_modificacion, long file_size, boolean is_dir, int version, boolean modified) {
         this.fileName = fileName;
         this.fecha_modificacion = fecha_modificacion;
         this.file_size = file_size;
         this.is_dir = is_dir;
         this.version = version;
+        this.modified = modified;
+        this.action = 0;
     }
 
     @Override
@@ -57,17 +61,20 @@ public class ArchivoInfo implements Serializable{
             return false;
         }
         final ArchivoInfo other = (ArchivoInfo) obj;
-        if (this.version != other.version) {
-            return false;
-        }
+
         if (!Objects.equals(this.fileName, other.fileName)) {
             return false;
         }
         if (!Objects.equals(this.MD5_File, other.MD5_File)) {
             return false;
         }
+        if (!Objects.equals(this.fecha_modificacion, other.fecha_modificacion)) {
+            return false;
+        }
         return true;
     }
+
+    
 
     public String getFileName() {
         return fileName;
@@ -117,6 +124,23 @@ public class ArchivoInfo implements Serializable{
         this.version = version;
     }
 
+    public boolean isModified() {
+        return modified;
+    }
+
+    public void setModified(boolean modified) {
+        this.modified = modified;
+    }
+
+    public int getAction() {
+        return action;
+    }
+
+    public void setAction(int action) {
+        this.action = action;
+    }
+
+    
     @Override
     public String toString() {
         return "ArchivoInfo{" + "fileName=" + fileName + ", MD5_File=" +
