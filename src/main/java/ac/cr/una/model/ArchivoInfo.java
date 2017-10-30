@@ -68,7 +68,7 @@ public class ArchivoInfo implements Serializable{
         if (!Objects.equals(this.MD5_File, other.MD5_File)) {
             return false;
         }
-        if (!Objects.equals(this.fecha_modificacion, other.fecha_modificacion)) {
+        if (!Objects.equals(this.version, other.version)) {
             return false;
         }
         return true;

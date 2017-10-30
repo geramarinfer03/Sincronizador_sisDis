@@ -15,7 +15,7 @@ public class Sincronizador {
         System.out.println("Iniciando");
         //Servidor server = new Servidor("/home/jose/Escritorio/CarpetaSinc/server");
         Cliente cliente = new Cliente("/home/jose/Escritorio/CarpetaSinc/cliente1", "localhost");
-       // server.init();
+        //server.init();
         cliente.init();
     }
 }

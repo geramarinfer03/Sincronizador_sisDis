@@ -8,17 +8,20 @@ package ac.cr.una.app;
 import ac.cr.una.model.ArchivoInfo;
 import ac.cr.una.utils.Utils_file;
 import com.google.gson.Gson;
+import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import java.util.stream.Collectors;
+import org.zeromq.ZFrame;
 import org.zeromq.ZMQ;
+import org.zeromq.ZMsg;
 
 /**
  *
@@ -50,11 +53,15 @@ public class Cliente {
         //hace toda la mierda con el servidor y arranca los procesos.
         
        this.archivos_locales =  utils_methods.mapearDirectorioLocal(ruta);
-        //this.saveListLocalFilesTxt();
+       /* try {
+            this.saveListLocalFilesTxt();
+        } catch (IOException ex) {
+            Logger.getLogger(Cliente.class.getName()).log(Level.SEVERE, null, ex);
+        }*/
         this.cargarListaTxt();
         this.archivos_locales =  utils_methods.actualizarLista(archivos_locales, archivos_anteriores);
         
-         ZMQ.Context context = ZMQ.context(1); 
+        ZMQ.Context context = ZMQ.context(1); 
          
         ZMQ.Socket accept = context.socket(ZMQ.REQ);
         accept.connect("tcp://localhost:8889");
@@ -77,11 +84,50 @@ public class Cliente {
         
         requester.send("Sync");
        
-       /* reply = new String(requester.recv());
-        String bro = reply;
-        System.out.println(bro);*/
-       
+        ZMsg inMsg = ZMsg.recvMsg(requester);
+        String action = inMsg.pop().toString();
         
+        switch(action){
+            case "Deleted":
+                this.wasDeleted(inMsg, requester);
+                break;
+            case "Updateme":
+                this.sendupdate(inMsg, requester);
+        }
+      //  this.archivos_locales =  utils_methods.mapearDirectorioLocal(ruta);
+       /* try {
+            this.saveListLocalFilesTxt();
+        } catch (IOException ex) {
+            Logger.getLogger(Cliente.class.getName()).log(Level.SEVERE, null, ex);
+        }*/
+        
+    }
+    
+    private void wasDeleted(ZMsg inMsg, ZMQ.Socket requester){
+         String msg = inMsg.pop().toString();
+         System.out.println("Cliente: " + msg);
+         requester.send("OK");
+         
+    }
+    
+    private void sendupdate(ZMsg inMsg, ZMQ.Socket requester){
+        try {
+            String fileName = inMsg.pop().toString();
+            
+            File file = new File(ruta + "/" + fileName);
+            
+            byte[] array = Files.readAllBytes(file.toPath());
+            
+            
+            ZMsg outMsg = new ZMsg();
+            outMsg.add(new ZFrame(fileName));
+            outMsg.add(new ZFrame(array));
+            outMsg.send(requester);
+            
+            
+        } catch (IOException ex) {
+            Logger.getLogger(Cliente.class.getName()).log(Level.SEVERE, null, ex);
+        }
     }
 
     public String getRuta() {
