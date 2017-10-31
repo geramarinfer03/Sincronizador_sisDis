@@ -13,8 +13,8 @@ import java.util.Objects;
  *
  * @author jose
  */
-public class ArchivoInfo implements Serializable{
-    
+public class ArchivoInfo implements Serializable {
+
     private String fileName;
     private String MD5_File;
     private Date fecha_modificacion;
@@ -68,13 +68,23 @@ public class ArchivoInfo implements Serializable{
         if (!Objects.equals(this.MD5_File, other.MD5_File)) {
             return false;
         }
-        if (!Objects.equals(this.version, other.version)) {
+        /*if (!Objects.equals(this.version, other.version)) {
             return false;
-        }
+        }*/
         return true;
     }
 
-    
+    public boolean copy(ArchivoInfo archivo) {
+        this.setMD5_File(archivo.getMD5_File());
+        this.setFileName(archivo.getFileName());
+        this.setAction(archivo.getAction());
+        this.setFile_size(archivo.getFile_size());
+        this.setIs_dir(archivo.isIs_dir());
+        this.setModified(archivo.isModified());
+        this.setVersion(archivo.getVersion());
+        this.setFecha_modificacion(archivo.getFecha_modificacion());
+        return true;
+    }
 
     public String getFileName() {
         return fileName;
@@ -140,15 +150,12 @@ public class ArchivoInfo implements Serializable{
         this.action = action;
     }
 
-    
     @Override
     public String toString() {
-        return "ArchivoInfo{" + "fileName=" + fileName + ", MD5_File=" +
-                MD5_File + ", fecha_modificacion=" + fecha_modificacion +
-                ", file_size=" + file_size + ", is_dir=" + is_dir +
-                ", version=" + version + '}';
+        return "ArchivoInfo{" + "fileName=" + fileName + ", MD5_File="
+                + MD5_File + ", fecha_modificacion=" + fecha_modificacion
+                + ", file_size=" + file_size + ", is_dir=" + is_dir
+                + ", version=" + version + '}';
     }
-    
-    
-    
+
 }
