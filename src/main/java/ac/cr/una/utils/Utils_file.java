@@ -25,10 +25,10 @@ import java.util.stream.Collectors;
  * @author jose
  */
 public class Utils_file {
-
+    
     private MessageDigest messageDigest;
     private static Utils_file instance;
-
+    
     private Utils_file() {
         try {
             this.messageDigest = MessageDigest.getInstance("MD5");
@@ -36,16 +36,16 @@ public class Utils_file {
             Logger.getLogger(Utils_file.class.getName()).log(Level.SEVERE, null, ex);
         }
     }
-
+    
     public static Utils_file getInstance() {
         if (instance == null) {
             instance = new Utils_file();
         }
         return instance;
     }
-
+    
     public String MD5_file(String path_file) throws IOException {
-
+        
         InputStream archivo;
         archivo = new FileInputStream(path_file);
         byte[] buffer = new byte[1];
@@ -53,7 +53,7 @@ public class Utils_file {
         int caracter;
         caracter = archivo.read(buffer);
         while (caracter != fin_archivo) {
-
+            
             messageDigest.update(buffer); // Pasa texto claro a la función resumen
             caracter = archivo.read(buffer);
         }
@@ -61,7 +61,7 @@ public class Utils_file {
         byte[] resumen = messageDigest.digest(); // Genera el resumen MD5
         return this.resumeToHexa(resumen);
     }
-
+    
     public String resumeToHexa(byte[] resumen) {
         String s = "";
         for (int i = 0; i < resumen.length; i++) {
@@ -78,15 +78,15 @@ public class Utils_file {
         List<ArchivoInfo> archivos_locales = new ArrayList<>();
         ArchivoInfo carpetaLocal = new ArchivoInfo(dirLocal.getName(), new Date(dirLocal.lastModified()), 0,
                 dirLocal.isDirectory(), 0, false);
-
+        
         carpetaLocal.toString();
-
+        
         File archivosLocales[] = dirLocal.listFiles();
-
+        
         for (File file : archivosLocales) {
             if (!file.getName().equals(DOC_LISTA_ARCHIVOS)) {
                 ArchivoInfo filefromDir = new ArchivoInfo();
-
+                
                 filefromDir.setFileName(file.getName());
                 filefromDir.setFecha_modificacion(new Date(file.lastModified()));
                 if (!file.isDirectory()) {
@@ -99,17 +99,17 @@ public class Utils_file {
                     } catch (IOException ex) {
                         Logger.getLogger(Cliente.class.getName()).log(Level.SEVERE, null, ex);
                     }
-
+                    
                 }//else metodo recursivo
                 filefromDir.toString();
                 archivos_locales.add(filefromDir);
             }
-
+            
         }
-
+        
         return archivos_locales;
     }
-
+    
     public List<ArchivoInfo> actualizarLista(List<ArchivoInfo> archivos_locales, List<ArchivoInfo> archivos_anteriores) {
         //Actualiza archivos respecto a los anteriores
         archivos_locales.stream().forEach((ArchivoInfo local) -> {
@@ -123,42 +123,50 @@ public class Utils_file {
                 if (!fileInfo.equals(local)) {
                     local.setModified(true);
                     local.setVersion(fileInfo.getVersion() + 1);
+                }
+                
+                if (fileInfo.getAction() == 1) {
+                    local.setVersion(fileInfo.getVersion() + 1);
+                    
                 } else {
                     local.setVersion(fileInfo.getVersion());
                 }
             } else {
-                local.setModified(true); //archivo nuevo o se renombro, no estaba en los anteriores.
+                //  local.setModified(true); //archivo nuevo o se renombro, no estaba en los anteriores.
             }
         });
-
+        
         this.encontrarArchivosEliminados(archivos_locales, archivos_anteriores);
-
+        
         return archivos_locales;
-
+        
     }
-
+    
     private void encontrarArchivosEliminados(List<ArchivoInfo> archivos_locales, List<ArchivoInfo> archivos_anteriores) {
         archivos_anteriores.stream().forEach((ArchivoInfo anterior) -> {
             List<ArchivoInfo> ant = (List<ArchivoInfo>) archivos_locales.stream()
                     .filter(local
                             -> (local.getFileName().equals(anterior.getFileName())))
                     .collect(Collectors.toList());
-
+            
             if (ant.isEmpty()) {
-                anterior.setModified(true);
+                if (anterior.isModified()) {
+                    anterior.setModified(false);
+                    anterior.setVersion(anterior.getVersion() + 1);
+                }
                 anterior.setAction(1); //se va a eliminar en el servidor
                 archivos_locales.add(anterior);
             }
-
+            
         });
-
+        
     }
-
+    
     public ArchivoInfo encontrarArchivoNombre(List<ArchivoInfo> archivos, String nombre) {
         List<ArchivoInfo> encontrados = archivos.stream().filter(a -> (a.getFileName().equals(nombre)))
                 .collect(Collectors.toList());
-
-        return encontrados.get(0);
-
+        
+        return (encontrados.size() > 0) ? encontrados.get(0) : null;
+        
     }
 }
