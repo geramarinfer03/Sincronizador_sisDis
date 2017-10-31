@@ -28,14 +28,14 @@ import org.zeromq.ZMsg;
  * @author josue
  */
 public class Servidor {
-
+    
     private String directorio;
     private static final String hostConnections = "tcp://*:8889";
     private static final String hostFiles = "tcp://localhost:5555";
     private ZMQ.Context context;
     private Utils_file utils_methods;
     private List<ArchivoInfo> archivosServer;
-
+    
     public Servidor(String directorio) {
         this.directorio = directorio;
         utils_methods = Utils_file.getInstance();
@@ -47,7 +47,7 @@ public class Servidor {
     public String getDirectorio() {
         return directorio;
     }
-
+    
     public void setDirectorio(String directorio) {
         this.directorio = directorio;
     }
@@ -59,29 +59,29 @@ public class Servidor {
 
         // new Thread(thread).start();
         this.archivosServer = utils_methods.mapearDirectorioLocal(directorio);
-
+        
         iniciarListenerReplies4Files();
-
+        
     }
-
+    
     public void iniciarListenerReplies4Files() {
         System.out.println("esperando solicitudes.");
         ZMQ.Socket solicitudArchivos = context.socket(ZMQ.REP);
         solicitudArchivos.bind(this.hostFiles);
-
+        
         while (!Thread.currentThread().isInterrupted()) {
             // ZMsg inMsg = ZMsg.recvMsg(responder);
             System.out.println("Esperando mensaje.");
             byte[] reply = solicitudArchivos.recv(0);
             String replyJson = new String(reply);
             List<ArchivoInfo> archivosCliente;
-
+            
             System.out.println("Lista archivos cliente: " + new String(reply));
             solicitudArchivos.send("recibido. conexion");
-
+            
             String list_files_json = new Gson().toJson(this.archivosServer);
             System.out.println("Lista archivos server: " + new String(list_files_json));
-
+            
             if (reply.length > 0) { //probar si llega vacio
                 archivosCliente = new Gson().fromJson(replyJson, new TypeToken<ArrayList<ArchivoInfo>>() {
                 }.getType());
@@ -96,14 +96,14 @@ public class Servidor {
                 //Comienza con los metodos para la sincronizacion......
                 //solicitudArchivos.send("SIII :D");
                 sincronizacion(solicitudArchivos, archivosCliente);
-
+                
             }//else el cliente 
         }
-
+        
         solicitudArchivos.close();
         context.term();
     }
-
+    
     private void sincronizacion(ZMQ.Socket solicitudArchivos, List<ArchivoInfo> cliente) {
         //revisa archivos modificados o eliminados
         //  ZMsg outMsg = new ZMsg();
@@ -121,34 +121,39 @@ public class Servidor {
             if (!files.isEmpty()) {
                 ArchivoInfo archivo = files.get(0);
                 if (archivo.equals(server_file)) {
-
+                    
                     if (archivo.getAction() == 1) {
                         //Elimina Archivo
                         boolean flag = deleteFile(server_file, outMsg, solicitudArchivos);
                         System.out.println(flag ? "Archivo eliminado" : "No se pudo Eliminar");
                     }
-
+                    
                 } else {
+                    
+                    if (server_file.getVersion() > archivo.getVersion()) {
+                        enviarActualizacion(server_file, outMsg, solicitudArchivos);
+                    }
                     if (server_file.getVersion() < archivo.getVersion()) {
                         //Update Server
                         recibirActualizacion(server_file, archivo, outMsg, solicitudArchivos);
                     }
                 }
-
+                
+            } else {
+                this.enviarNuevoArchivo(server_file, outMsg, solicitudArchivos);
             }
-
+            
         });
-
         
         this.ArchivosNuevos(solicitudArchivos, cliente);
         deleteFromArray();
         solicitudArchivos.send("termine");
-
+        
     }
-
+    
     public boolean ArchivosNuevos(ZMQ.Socket solicitudArchivos, List<ArchivoInfo> cliente) {
         ZMsg outMsg = new ZMsg();
-
+        
         cliente.forEach(client -> {
             boolean nuevo = archivosServer.stream().filter(aS -> (aS.getFileName().equals(client.getFileName()))).collect(Collectors.toList()).isEmpty();
             if (nuevo) {
@@ -156,83 +161,107 @@ public class Servidor {
                 this.addFile(client, outMsg, solicitudArchivos);
             }
         });
-
+        
         return true;
     }
-
+    
     protected void addFile(ArchivoInfo archivo, ZMsg outMsg, ZMQ.Socket solicitudArchivos) {
         outMsg.add(new ZFrame("Create"));
         outMsg.add(new ZFrame(archivo.getFileName()));
         outMsg.send(solicitudArchivos);
-
+        
         ZMsg inMsg = ZMsg.recvMsg(solicitudArchivos);
         String fileName = inMsg.pop().toString();
         byte[] fileData = inMsg.pop().getData();
-
+        
         try {
-
+            
             Files.write(Paths.get(directorio + "/" + fileName), fileData);
             this.archivosServer.add(archivo);
             System.out.println("Guardando Creacion de Archivo");
-
+            
         } catch (IOException ex) {
             Logger.getLogger(Servidor.class.getName()).log(Level.SEVERE, null, ex);
         }
     }
-
+    
     protected boolean deleteFile(ArchivoInfo archivo, ZMsg outMsg, ZMQ.Socket solicitudArchivos) {
         File file = new File(this.directorio + "/" + archivo.getFileName());
         boolean deleted = file.delete();
         String msg = archivo.getFileName();
-
+        
         outMsg.add(new ZFrame("Deleted"));
         outMsg.add(new ZFrame(msg));
         outMsg.send(solicitudArchivos);
         System.out.println("Eliminando Archivo");
-
+        
         archivo.setAction(1);
-
+        
         String mensajeCliente = new String(solicitudArchivos.recv());
         return deleted;
     }
-
+    
     protected void enviarActualizacion(ArchivoInfo archivo, ZMsg outMsg, ZMQ.Socket solicitudArchivos) {
         File file = new File(this.directorio + "/" + archivo.getFileName());
         try {
             byte[] array = Files.readAllBytes(file.toPath());
-
-            outMsg.add(new ZFrame("Update"));
+            
+            String object = new Gson().toJson(archivo);
+            
+            outMsg.add(new ZFrame("UpdateC"));
+            outMsg.add(new ZFrame(archivo.getFileName()));
             outMsg.add(new ZFrame(array));
+            outMsg.add(new ZFrame(object));
             outMsg.send(solicitudArchivos);
-
+            
             String mensajeCliente = new String(solicitudArchivos.recv());
         } catch (IOException ex) {
             Logger.getLogger(Servidor.class.getName()).log(Level.SEVERE, null, ex);
         }
     }
-
+    
+    protected void enviarNuevoArchivo(ArchivoInfo archivo, ZMsg outMsg, ZMQ.Socket solicitudArchivos) {
+        
+        File file = new File(this.directorio + "/" + archivo.getFileName());
+        try {
+            byte[] array = Files.readAllBytes(file.toPath());
+            
+            String object = new Gson().toJson(archivo);
+            
+            outMsg.add(new ZFrame("CreateC"));
+            outMsg.add(new ZFrame(archivo.getFileName()));
+            outMsg.add(new ZFrame(array));
+            outMsg.add(new ZFrame(object));
+            outMsg.send(solicitudArchivos);
+            
+            String mensajeCliente = new String(solicitudArchivos.recv());
+        } catch (IOException ex) {
+            Logger.getLogger(Servidor.class.getName()).log(Level.SEVERE, null, ex);
+        }
+    }
+    
     protected void recibirActualizacion(ArchivoInfo server_file, ArchivoInfo client_file, ZMsg outMsg, ZMQ.Socket solicitudArchivos) {
         outMsg.add(new ZFrame("Update"));
         outMsg.add(new ZFrame(server_file.getFileName()));
         outMsg.send(solicitudArchivos);
-
+        
         ZMsg inMsg = ZMsg.recvMsg(solicitudArchivos);
         String fileName = inMsg.pop().toString();
         byte[] fileData = inMsg.pop().getData();
-
+        
         try {
-
+            
             Files.write(Paths.get(directorio + "/" + fileName), fileData);
-            server_file.setVersion(server_file.getVersion() + 1);
+            //server_file.setVersion(server_file.getVersion() + 1);
             server_file.copy(client_file);
             System.out.println("Guardando actualizacion");
-
+            
         } catch (IOException ex) {
             Logger.getLogger(Servidor.class.getName()).log(Level.SEVERE, null, ex);
         }
-
+        
     }
-
+    
     protected boolean deleteFromArray() {
         Predicate<ArchivoInfo> arch = a -> a.getAction() == 1;
         boolean band = this.archivosServer.removeIf(arch);
@@ -241,13 +270,13 @@ public class Servidor {
 
     //<editor-fold defaultstate="collapsed" desc="Class ConnectionsReply">
     class ConnectionsReply implements Runnable {
-
+        
         private String host;
-
+        
         public ConnectionsReply(String host) {
             this.host = host;
         }
-
+        
         @Override
         public void run() {
             ZMQ.Context context = ZMQ.context(1);
@@ -262,11 +291,11 @@ public class Servidor {
                 System.out.println("Servidor: " + new String(reply));
                 responder.send("ok");
             }
-
+            
             responder.close();
             context.term();
         }
-
+        
     }
 //</editor-fold>
 

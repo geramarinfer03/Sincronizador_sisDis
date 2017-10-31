@@ -153,4 +153,12 @@ public class Utils_file {
         });
 
     }
+
+    public ArchivoInfo encontrarArchivoNombre(List<ArchivoInfo> archivos, String nombre) {
+        List<ArchivoInfo> encontrados = archivos.stream().filter(a -> (a.getFileName().equals(nombre)))
+                .collect(Collectors.toList());
+
+        return encontrados.get(0);
+
+    }
 }
