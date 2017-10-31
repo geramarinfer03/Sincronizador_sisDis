@@ -5,17 +5,19 @@ package ac.cr.una.app;
  * To change this template file, choose Tools | Templates
  * and open the template in the editor.
  */
-
 /**
  *
  * @author jose
  */
 public class Sincronizador {
+
     public static void main(String[] args) {
         System.out.println("Iniciando");
-        //Servidor server = new Servidor("/home/jose/Escritorio/CarpetaSinc/server");
-        Cliente cliente = new Cliente("/home/jose/Escritorio/CarpetaSinc/cliente1", "localhost");
-        //server.init();
+//        Servidor server = new Servidor("/home/josue/Escritorio/CarpetaSinc/server");
+//        server.init();
+        Cliente cliente = new Cliente("/home/josue/Escritorio/CarpetaSinc/cliente1", "localhost");
         cliente.init();
+        
+        
     }
 }

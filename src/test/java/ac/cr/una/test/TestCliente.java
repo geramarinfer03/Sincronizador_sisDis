@@ -19,7 +19,7 @@ public class TestCliente {
     
     @Test
     public void ClenteTest(){
-        Cliente c = new Cliente("/home/jose/Escritorio/CarpetaSinc/cliente1", "localhost");
+        Cliente c = new Cliente("/home/josue/Escritorio/CarpetaSinc/cliente1", "localhost");
         c.init();
        
     }  
