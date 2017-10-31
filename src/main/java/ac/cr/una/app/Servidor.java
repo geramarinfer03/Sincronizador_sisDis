@@ -189,7 +189,7 @@ public class Servidor {
                 System.out.println("Guardando Creacion de Archivo Nuevo");
             } else {
 
-                if (archivo.getVersion() > arch.getVersion()) {
+                if (archivo.getVersion() >= arch.getVersion()) {
                     outMsg.add(new ZFrame("Create"));
                     outMsg.add(new ZFrame(archivo.getFileName()));
                     outMsg.send(solicitudArchivos);
