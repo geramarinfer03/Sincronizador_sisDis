@@ -14,6 +14,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import java.util.function.Predicate;
 import java.util.logging.Level;
@@ -35,12 +36,14 @@ public class Servidor {
     private ZMQ.Context context;
     private Utils_file utils_methods;
     private List<ArchivoInfo> archivosServer;
+    private Date fecha_modificacion;
 
     public Servidor(String directorio) {
         this.directorio = directorio;
         utils_methods = Utils_file.getInstance();
         context = ZMQ.context(1);
         archivosServer = new ArrayList<>();
+        this.fecha_modificacion = new Date();
     }
 
     //<editor-fold defaultstate="collapsed" desc="Set's Get's">
@@ -113,43 +116,43 @@ public class Servidor {
 //        String mensajeCliente = new String(solicitudArchivos.recv());
         System.out.println("En sincronizador ");
         archivosServer.forEach((ArchivoInfo server_file) -> {
-            if (server_file.getAction() != 1) {
-                ZMsg outMsg = new ZMsg();
-                List<ArchivoInfo> files = (List<ArchivoInfo>) cliente.stream()
-                        .filter(local
-                                -> (local.getFileName().equals(server_file.getFileName())))
-                        .collect(Collectors.toList());
-                if (!files.isEmpty()) {
-                    ArchivoInfo archivo = files.get(0);
-                    if (archivo.equals(server_file)) {
+            ZMsg outMsg = new ZMsg();
+            List<ArchivoInfo> files = (List<ArchivoInfo>) cliente.stream()
+                    .filter(local
+                            -> (local.getFileName().equals(server_file.getFileName())))
+                    .collect(Collectors.toList());
+            if (!files.isEmpty()) {
+                ArchivoInfo archivo = files.get(0);
+                if (archivo.equals(server_file)) {
 
-                        if (archivo.getAction() == 1) {
-                            //Elimina Archivo
-                            boolean flag = deleteFile(server_file, archivo, outMsg, solicitudArchivos);
-                            System.out.println(flag ? "Archivo eliminado" : "No se pudo Eliminar");
-                        }
-
-                    } else {
-
-                        if (server_file.getVersion() > archivo.getVersion()) {
-                            enviarActualizacion(server_file, outMsg, solicitudArchivos);
-                        }
-                        if (server_file.getVersion() < archivo.getVersion()) {
-                            //Update Server
-                            recibirActualizacion(server_file, archivo, outMsg, solicitudArchivos);
-                        }
+                    if (archivo.getAction() == 1) {
+                        //Elimina Archivo
+                        boolean flag = deleteFile(server_file, outMsg, solicitudArchivos);
+                        System.out.println(flag ? "Archivo eliminado" : "No se pudo Eliminar");
                     }
 
                 } else {
-                    this.enviarNuevoArchivo(server_file, outMsg, solicitudArchivos);
+
+                    if (server_file.getVersion() > archivo.getVersion()) {
+                        enviarActualizacion(server_file, outMsg, solicitudArchivos);
+                    }
+                    if (server_file.getVersion() < archivo.getVersion()) {
+                        //Update Server
+                        recibirActualizacion(server_file, archivo, outMsg, solicitudArchivos);
+                    }
                 }
+
+            } else {
+                this.enviarNuevoArchivo(server_file, outMsg, solicitudArchivos);
             }
 
         });
 
         this.ArchivosNuevos(solicitudArchivos, cliente);
-        //deleteFromArray();
+        deleteFromArray();
         solicitudArchivos.send("termine");
+
+        this.fecha_modificacion = new Date();
 
     }
 
@@ -158,8 +161,7 @@ public class Servidor {
 
         cliente.forEach(client -> {
             if (client.getAction() != 1) {
-                boolean nuevo = archivosServer.stream().filter(aS -> (aS.getFileName().equals(client.getFileName()) && aS.getAction() == 0))
-                        .collect(Collectors.toList()).isEmpty();
+                boolean nuevo = archivosServer.stream().filter(aS -> (aS.getFileName().equals(client.getFileName()))).collect(Collectors.toList()).isEmpty();
                 if (nuevo) {
                     System.out.println("Se creara Archivo nuevo");
                     this.addFile(client, outMsg, solicitudArchivos);
@@ -171,11 +173,10 @@ public class Servidor {
     }
 
     protected void addFile(ArchivoInfo archivo, ZMsg outMsg, ZMQ.Socket solicitudArchivos) {
+        boolean crear = this.fecha_modificacion.compareTo(archivo.getFecha_modificacion()) == -1;
 
-        try {
-
-            ArchivoInfo arch = this.utils_methods.encontrarArchivoNombre(archivosServer, archivo.getFileName());
-            if (arch == null) {
+        if (crear) {
+            try {
                 outMsg.add(new ZFrame("Create"));
                 outMsg.add(new ZFrame(archivo.getFileName()));
                 outMsg.send(solicitudArchivos);
@@ -186,72 +187,35 @@ public class Servidor {
 
                 Files.write(Paths.get(directorio + "/" + fileName), fileData);
                 this.archivosServer.add(archivo);
-                System.out.println("Guardando Creacion de Archivo Nuevo");
-            } else {
+                System.out.println("Guardando Creacion de Archivo");
 
-                if (archivo.getVersion() >= arch.getVersion()) {
-                    outMsg.add(new ZFrame("Create"));
-                    outMsg.add(new ZFrame(archivo.getFileName()));
-                    outMsg.send(solicitudArchivos);
-
-                    ZMsg inMsg = ZMsg.recvMsg(solicitudArchivos);
-                    String fileName = inMsg.pop().toString();
-                    byte[] fileData = inMsg.pop().getData();
-                    Files.write(Paths.get(directorio + "/" + fileName), fileData);
-                    arch.copy(archivo);
-                    System.out.println("Guardando Creacion de Archivo Existente antes");
-                } else {
-                    String object = new Gson().toJson(arch);
-                    outMsg.add(new ZFrame("DeleteC"));
-                    outMsg.add(new ZFrame(archivo.getFileName()));
-                    outMsg.add(new ZFrame(object));
-                    outMsg.send(solicitudArchivos);
-
-                    solicitudArchivos.recv();
-                }
-
-            }
-
-        } catch (IOException ex) {
-            Logger.getLogger(Servidor.class.getName()).log(Level.SEVERE, null, ex);
-        }
-    }
-
-    protected boolean deleteFile(ArchivoInfo archivoS, ArchivoInfo archivoC, ZMsg outMsg, ZMQ.Socket solicitudArchivos) {
-        System.out.println("Versiones: "+archivoS.getVersion()+" "+archivoC.getVersion());
-        if (archivoC.getVersion() >= archivoS.getVersion()) {
-            File file = new File(this.directorio + "/" + archivoS.getFileName());
-            boolean deleted = file.delete();
-            String msg = archivoS.getFileName();
-
-            outMsg.add(new ZFrame("Deleted"));
-            outMsg.add(new ZFrame(msg));
-            outMsg.send(solicitudArchivos);
-            System.out.println("Eliminando Archivo");
-
-            archivoS.setAction(1);
-            archivoS.setVersion(archivoS.getVersion() + 1);
-
-            String mensajeCliente = new String(solicitudArchivos.recv());
-        } else {
-            File file = new File(this.directorio + "/" + archivoS.getFileName());
-            try {
-                byte[] array = Files.readAllBytes(file.toPath());
-
-                String object = new Gson().toJson(archivoS);
-
-                outMsg.add(new ZFrame("CreateC"));
-                outMsg.add(new ZFrame(archivoS.getFileName()));
-                outMsg.add(new ZFrame(array));
-                outMsg.add(new ZFrame(object));
-                outMsg.send(solicitudArchivos);
-
-                String mensajeCliente = new String(solicitudArchivos.recv());
             } catch (IOException ex) {
                 Logger.getLogger(Servidor.class.getName()).log(Level.SEVERE, null, ex);
             }
+        } else {
+
+            outMsg.add(new ZFrame("DeleteC"));
+            outMsg.add(new ZFrame(archivo.getFileName()));
+            outMsg.send(solicitudArchivos);
+
+            solicitudArchivos.recv();
         }
-        return true;
+    }
+
+    protected boolean deleteFile(ArchivoInfo archivo, ZMsg outMsg, ZMQ.Socket solicitudArchivos) {
+        File file = new File(this.directorio + "/" + archivo.getFileName());
+        boolean deleted = file.delete();
+        String msg = archivo.getFileName();
+
+        outMsg.add(new ZFrame("Deleted"));
+        outMsg.add(new ZFrame(msg));
+        outMsg.send(solicitudArchivos);
+        System.out.println("Eliminando Archivo");
+
+        archivo.setAction(1);
+
+        String mensajeCliente = new String(solicitudArchivos.recv());
+        return deleted;
     }
 
     protected void enviarActualizacion(ArchivoInfo archivo, ZMsg outMsg, ZMQ.Socket solicitudArchivos) {

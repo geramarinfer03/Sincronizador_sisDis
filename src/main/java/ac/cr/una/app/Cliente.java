@@ -55,9 +55,8 @@ public class Cliente {
     public void init() {
         //hace toda la mierda con el servidor y arranca los procesos.
 
-        this.archivos_locales = utils_methods.mapearDirectorioLocal(ruta);
-
         this.crearArchivoNoExistente();
+        this.archivos_locales = utils_methods.mapearDirectorioLocal(ruta);
         this.cargarListaTxt();
         this.archivos_locales = utils_methods.actualizarLista(archivos_locales, archivos_anteriores);
 
@@ -136,10 +135,8 @@ public class Cliente {
         String msg = inMsg.pop().toString();
         System.out.println("Archivo eliminado en el server: " + msg);
 
-//        Predicate<ArchivoInfo> arch = a -> a.getFileName().equals(msg);
-//        this.archivos_locales.removeIf(arch);
-        ArchivoInfo arch = this.utils_methods.encontrarArchivoNombre(archivos_locales, msg);
-        arch.setModified(true);
+        Predicate<ArchivoInfo> arch = a -> a.getFileName().equals(msg);
+        this.archivos_locales.removeIf(arch);
         requester.send("OK");
 
     }
@@ -223,16 +220,14 @@ public class Cliente {
 
     private void DeleteCliente(ZMsg inMsg, ZMQ.Socket requester) {
         String fileName = inMsg.pop().toString();
-        String archivo = inMsg.pop().toString();
-        ArchivoInfo archivo_server = new Gson().fromJson(archivo, new TypeToken<ArchivoInfo>() {
-        }.getType());
-        ArchivoInfo archivo_cliente = this.utils_methods.encontrarArchivoNombre(archivos_locales, fileName);
 
-        archivo_cliente.copy(archivo_server);
+        ArchivoInfo archivo_server = this.utils_methods.encontrarArchivoNombre(archivos_locales, fileName);
 
         File file = new File(this.ruta + "/" + fileName);
         boolean deleted = file.delete();
-        System.out.println("Eliminando archivo en clente");
+        Predicate<ArchivoInfo> arch = a -> a.getFileName().equals(fileName);
+        this.archivos_locales.removeIf(arch);
+        System.out.println("Eliminando archivo en cliente");
         requester.send("ok");
     }
 
