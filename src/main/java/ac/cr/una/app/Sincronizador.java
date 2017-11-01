@@ -18,7 +18,7 @@ public class Sincronizador {
 //        server.init();
         Cliente cliente = new Cliente("/home/josue/Escritorio/CarpetaSinc/cliente1", "localhost");
         cliente.init();
-        
+     
         
     }
 }

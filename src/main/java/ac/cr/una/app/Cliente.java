@@ -65,7 +65,7 @@ public class Cliente {
         /* ZMQ.Socket accept = context.socket(ZMQ.REQ);
         accept.connect("tcp://localhost:8889");*/
         ZMQ.Socket requester = context.socket(ZMQ.REQ);
-        requester.connect("tcp://localhost:5555");
+        requester.connect("tcp://localhost:8889");
 
         /*  accept.send("connection");
         String reply = new String(accept.recv());
@@ -117,6 +117,10 @@ public class Cliente {
 
                 case "DeleteC":
                     this.DeleteCliente(inMsg, requester);
+                    break;
+
+                case "Conflict":
+                    this.conflict(inMsg, requester);
                     break;
 
                 default:
@@ -229,6 +233,27 @@ public class Cliente {
         this.archivos_locales.removeIf(arch);
         System.out.println("Eliminando archivo en cliente");
         requester.send("ok");
+    }
+
+    private void conflict(ZMsg inMsg, ZMQ.Socket requester) {
+        try {
+            String fileName = inMsg.pop().toString();
+            byte[] fileData = inMsg.pop().getData();
+            String archivo = inMsg.pop().toString();
+            ArchivoInfo archivo_server = new Gson().fromJson(archivo, new TypeToken<ArchivoInfo>() {
+            }.getType());
+
+            File file = new File(this.ruta + "/" + fileName);
+            byte[] array = Files.readAllBytes(file.toPath());
+            boolean deleted = file.delete();
+            ArchivoInfo archivo_cliente = this.utils_methods.encontrarArchivoNombre(archivos_locales, fileName);
+            archivo_cliente.copy(archivo_server);
+            Files.write(Paths.get(ruta + "/" + fileName), fileData);
+            /*------------- Falta ---------------------*/
+
+        } catch (IOException ex) {
+            Logger.getLogger(Cliente.class.getName()).log(Level.SEVERE, null, ex);
+        }
     }
 
     public String getRuta() {

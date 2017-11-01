@@ -31,8 +31,8 @@ import org.zeromq.ZMsg;
 public class Servidor {
 
     private String directorio;
-    private static final String hostConnections = "tcp://*:8889";
-    private static final String hostFiles = "tcp://localhost:5555";
+    //private static final String hostConnections = "tcp://*:8889";
+    private static final String hostFiles = "tcp://localhost:8889";
     private ZMQ.Context context;
     private Utils_file utils_methods;
     private List<ArchivoInfo> archivosServer;
@@ -57,7 +57,7 @@ public class Servidor {
     //</editor-fold>
 
     public void init() {
-        Runnable thread = new ConnectionsReply(hostConnections);
+        //Runnable thread = new ConnectionsReply(hostConnections);
         //thread.run(); //Corrre hilo para hacer conexiones
 
         // new Thread(thread).start();
@@ -139,6 +139,12 @@ public class Servidor {
                     if (server_file.getVersion() < archivo.getVersion()) {
                         //Update Server
                         recibirActualizacion(server_file, archivo, outMsg, solicitudArchivos);
+                    } else {
+
+                        if (server_file.getVersion() == archivo.getVersion()) {
+                            System.out.println(archivo.getFileName() + ": Conflictoooooooooooooooooooooooooooooooo");
+                            resolverConflicto(server_file, archivo, outMsg, solicitudArchivos);
+                        }
                     }
                 }
 
@@ -277,6 +283,35 @@ public class Servidor {
             Logger.getLogger(Servidor.class.getName()).log(Level.SEVERE, null, ex);
         }
 
+    }
+
+    protected void resolverConflicto(ArchivoInfo server, ArchivoInfo cliente, ZMsg outMsg, ZMQ.Socket solicitudArchivos) {
+
+        try {
+            String object = new Gson().toJson(server);
+            File file = new File(this.directorio + "/" + server.getFileName());
+            byte[] array = Files.readAllBytes(file.toPath());
+            outMsg.add(new ZFrame("Conflict"));
+            outMsg.add(new ZFrame(server.getFileName()));
+            outMsg.add(new ZFrame(array));
+            outMsg.add(new ZFrame(object));
+            outMsg.send(solicitudArchivos);
+
+            ZMsg inMsg = ZMsg.recvMsg(solicitudArchivos);
+            byte[] fileData = inMsg.pop().getData();
+
+            String name = server.getFileName();
+            String newName = name.split(".")[0];
+            newName += "-conf.txt";
+            Files.write(Paths.get(directorio + "/" + newName), fileData);
+            ArchivoInfo a = new ArchivoInfo();
+            a.copy(cliente);
+            a.setFileName(newName);
+            this.archivosServer.add(a);
+
+        } catch (IOException ex) {
+            Logger.getLogger(Servidor.class.getName()).log(Level.SEVERE, null, ex);
+        }
     }
 
     protected boolean deleteFromArray() {
