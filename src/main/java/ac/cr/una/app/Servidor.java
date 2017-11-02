@@ -36,6 +36,7 @@ public class Servidor {
     private ZMQ.Context context;
     private Utils_file utils_methods;
     private List<ArchivoInfo> archivosServer;
+    private List<ArchivoInfo> temporalesServer;
     private Date fecha_modificacion;
 
     public Servidor(String directorio) {
@@ -43,6 +44,7 @@ public class Servidor {
         utils_methods = Utils_file.getInstance();
         context = ZMQ.context(1);
         archivosServer = new ArrayList<>();
+        temporalesServer = new ArrayList<>();
         this.fecha_modificacion = new Date();
     }
 
@@ -100,7 +102,7 @@ public class Servidor {
                 //solicitudArchivos.send("SIII :D");
                 sincronizacion(solicitudArchivos, archivosCliente);
 
-            }//else el cliente 
+            }//else el cliente
         }
 
         solicitudArchivos.close();
@@ -139,12 +141,9 @@ public class Servidor {
                     if (server_file.getVersion() < archivo.getVersion()) {
                         //Update Server
                         recibirActualizacion(server_file, archivo, outMsg, solicitudArchivos);
-                    } else {
-
-                        if (server_file.getVersion() == archivo.getVersion()) {
-                            System.out.println(archivo.getFileName() + ": Conflictoooooooooooooooooooooooooooooooo");
-                            resolverConflicto(server_file, archivo, outMsg, solicitudArchivos);
-                        }
+                    } else if (server_file.getVersion() == archivo.getVersion()) {
+                        System.out.println(archivo.getFileName() + ": Conflictoooooooooooooooooooooooooooooooo");
+                        resolverConflicto(server_file, archivo, outMsg, solicitudArchivos);
                     }
                 }
 
@@ -157,6 +156,11 @@ public class Servidor {
         this.ArchivosNuevos(solicitudArchivos, cliente);
         deleteFromArray();
         solicitudArchivos.send("termine");
+
+        if (!this.temporalesServer.isEmpty()) {
+            this.archivosServer.addAll(temporalesServer);
+            this.temporalesServer = new ArrayList();
+        }
 
         this.fecha_modificacion = new Date();
 
@@ -286,11 +290,11 @@ public class Servidor {
     }
 
     protected void resolverConflicto(ArchivoInfo server, ArchivoInfo cliente, ZMsg outMsg, ZMQ.Socket solicitudArchivos) {
-
         try {
-            String object = new Gson().toJson(server);
             File file = new File(this.directorio + "/" + server.getFileName());
             byte[] array = Files.readAllBytes(file.toPath());
+            String object = new Gson().toJson(server);
+
             outMsg.add(new ZFrame("Conflict"));
             outMsg.add(new ZFrame(server.getFileName()));
             outMsg.add(new ZFrame(array));
@@ -300,18 +304,21 @@ public class Servidor {
             ZMsg inMsg = ZMsg.recvMsg(solicitudArchivos);
             byte[] fileData = inMsg.pop().getData();
 
-            String name = server.getFileName();
-            String newName = name.split(".")[0];
-            newName += "-conf.txt";
+            String newName = server.getFileName() + "-conf";
+
             Files.write(Paths.get(directorio + "/" + newName), fileData);
-            ArchivoInfo a = new ArchivoInfo();
-            a.copy(cliente);
-            a.setFileName(newName);
-            this.archivosServer.add(a);
+            ArchivoInfo copia = new ArchivoInfo();
+            copia.copy(cliente);
+            copia.setVersion(1);
+            copia.setFileName(newName);
+            copia.setFecha_modificacion(new Date());
+
+            this.temporalesServer.add(copia);
 
         } catch (IOException ex) {
             Logger.getLogger(Servidor.class.getName()).log(Level.SEVERE, null, ex);
         }
+
     }
 
     protected boolean deleteFromArray() {

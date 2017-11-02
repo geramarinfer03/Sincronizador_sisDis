@@ -14,9 +14,9 @@ public class Sincronizador {
     public static void main(String[] args) {
         System.out.println("Iniciando");
         
-//        Servidor server = new Servidor("/home/josue/Escritorio/CarpetaSinc/server");
+//        Servidor server = new Servidor("/home/estudiante/Escritorio/CarpetaSinc/server");
 //        server.init();
-        Cliente cliente = new Cliente("/home/josue/Escritorio/CarpetaSinc/cliente1", "localhost");
+        Cliente cliente = new Cliente("/home/estudiante/Escritorio/CarpetaSinc/cliente2", "localhost");
         cliente.init();
      
         

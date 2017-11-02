@@ -18,6 +18,7 @@ import java.io.ObjectOutputStream;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import java.util.function.Predicate;
 import java.util.logging.Level;
@@ -53,7 +54,6 @@ public class Cliente {
     }
 
     public void init() {
-        //hace toda la mierda con el servidor y arranca los procesos.
 
         this.crearArchivoNoExistente();
         this.archivos_locales = utils_methods.mapearDirectorioLocal(ruta);
@@ -243,17 +243,34 @@ public class Cliente {
             ArchivoInfo archivo_server = new Gson().fromJson(archivo, new TypeToken<ArchivoInfo>() {
             }.getType());
 
-            File file = new File(this.ruta + "/" + fileName);
+            File file = new File(ruta + "/" + fileName);
             byte[] array = Files.readAllBytes(file.toPath());
+            ZMsg outMsg = new ZMsg();
+            outMsg.add(new ZFrame(array));
+            outMsg.send(requester);
+            
             boolean deleted = file.delete();
-            ArchivoInfo archivo_cliente = this.utils_methods.encontrarArchivoNombre(archivos_locales, fileName);
-            archivo_cliente.copy(archivo_server);
             Files.write(Paths.get(ruta + "/" + fileName), fileData);
-            /*------------- Falta ---------------------*/
+
+            String newName = fileName + "-conf";
+            Files.write(Paths.get(ruta + "/" + newName), array);
+
+            ArchivoInfo a = this.utils_methods.encontrarArchivoNombre(archivos_locales, fileName);
+            ArchivoInfo copia = new ArchivoInfo();
+            copia.copy(a);
+            copia.setVersion(1);
+            copia.setFecha_modificacion(new Date());
+            this.archivos_locales.add(copia);
+                    
+            
+            a.copy(archivo_server);
+
+            
 
         } catch (IOException ex) {
             Logger.getLogger(Cliente.class.getName()).log(Level.SEVERE, null, ex);
         }
+
     }
 
     public String getRuta() {
