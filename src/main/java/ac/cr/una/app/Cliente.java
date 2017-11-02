@@ -67,60 +67,59 @@ public class Cliente {
         ZMQ.Socket requester = context.socket(ZMQ.REQ);
         requester.connect("tcp://localhost:8889");
 
-        /*  accept.send("connection");
-        String reply = new String(accept.recv());
-        System.out.println(reply);*/
-        //Recibiendo la lista 
+
         String list_files_json = new Gson().toJson(this.archivos_locales);
-        System.out.println("Lista cliente: " + list_files_json);
+        
 
         requester.send(list_files_json);
 
         String replySendLists = new String(requester.recv());
 
-        System.out.println(replySendLists);
+       
 
         requester.send("Sync");
 
-//        int tam = Integer.parseInt(new String(requester.recv()));
-//        requester.send("size recieved");
-//        System.out.println(tam);
+
         ZMsg inMsg = ZMsg.recvMsg(requester);
         String action = inMsg.pop().toString();
 
         while (!action.equals("termine")) {
-            System.out.println("Action: " + action);
+           
             switch (action) {
 
                 case "Deleted":
                     this.wasDeleted(inMsg, requester);
-                    //requester.send("Delete");
+                    System.out.println("Eliminando Archivo en servidor");
                     break;
                 case "Update":
                     this.sendupdate(inMsg, requester);
-                    // requester.send("Update");
+                    System.out.println("Actualizando Archivo en servidor");
                     break;
 
                 case "Create":
                     this.sendcreate(inMsg, requester);
-                    // requester.send("Update");
+                    System.out.println("Creando Archivo en servidor");
                     break;
 
                 case "UpdateC":
 
                     this.updateCliente(inMsg, requester);
+                    System.out.println("Actualizando Archivo en cliente");
                     break;
 
                 case "CreateC":
                     this.createCliente(inMsg, requester);
+                    System.out.println("Creando Archivo en cliente");
                     break;
 
                 case "DeleteC":
                     this.DeleteCliente(inMsg, requester);
+                    System.out.println("Eliminando Archivo en cliente");
                     break;
 
                 case "Conflict":
                     this.conflict(inMsg, requester);
+                    System.out.println("Se creo conflicto de Archivos");
                     break;
 
                 default:
@@ -137,7 +136,7 @@ public class Cliente {
 
     private void wasDeleted(ZMsg inMsg, ZMQ.Socket requester) {
         String msg = inMsg.pop().toString();
-        System.out.println("Archivo eliminado en el server: " + msg);
+       
 
         Predicate<ArchivoInfo> arch = a -> a.getFileName().equals(msg);
         this.archivos_locales.removeIf(arch);
@@ -192,7 +191,7 @@ public class Cliente {
             archivos_locales.add(archivo_server);
             Files.write(Paths.get(ruta + "/" + fileName), fileData);
 
-            System.out.println("Guardando Archivo nuevo cliente");
+          
             requester.send("ok");
         } catch (IOException ex) {
             Logger.getLogger(Cliente.class.getName()).log(Level.SEVERE, null, ex);
@@ -214,7 +213,7 @@ public class Cliente {
 
             Files.write(Paths.get(ruta + "/" + fileName), fileData);
 
-            System.out.println("Guardando actualizacion cliente");
+           
             requester.send("ok");
         } catch (IOException ex) {
             Logger.getLogger(Cliente.class.getName()).log(Level.SEVERE, null, ex);
@@ -231,7 +230,7 @@ public class Cliente {
         boolean deleted = file.delete();
         Predicate<ArchivoInfo> arch = a -> a.getFileName().equals(fileName);
         this.archivos_locales.removeIf(arch);
-        System.out.println("Eliminando archivo en cliente");
+       
         requester.send("ok");
     }
 
@@ -240,6 +239,7 @@ public class Cliente {
             String fileName = inMsg.pop().toString();
             byte[] fileData = inMsg.pop().getData();
             String archivo = inMsg.pop().toString();
+            String newName = inMsg.pop().toString();
             ArchivoInfo archivo_server = new Gson().fromJson(archivo, new TypeToken<ArchivoInfo>() {
             }.getType());
 
@@ -252,12 +252,14 @@ public class Cliente {
             boolean deleted = file.delete();
             Files.write(Paths.get(ruta + "/" + fileName), fileData);
 
-            String newName = fileName + "-conf";
+            
             Files.write(Paths.get(ruta + "/" + newName), array);
 
             ArchivoInfo a = this.utils_methods.encontrarArchivoNombre(archivos_locales, fileName);
             ArchivoInfo copia = new ArchivoInfo();
+            
             copia.copy(a);
+            copia.setFileName(newName);
             copia.setVersion(1);
             copia.setFecha_modificacion(new Date());
             this.archivos_locales.add(copia);
@@ -301,6 +303,7 @@ public class Cliente {
         try {
             ObjectOutputStream salida = new ObjectOutputStream(new FileOutputStream(this.ruta + "/" + DOC_LISTA_ARCHIVOS));
             //String json = new Gson().toJson(this.archivos_locales);
+           
             salida.writeObject(this.archivos_locales);
             salida.close();
             return true;
@@ -317,7 +320,7 @@ public class Cliente {
         if (!fichero.exists()) {
             try {
                 ObjectOutputStream salida = new ObjectOutputStream(new FileOutputStream(fichero));
-                System.out.println("CREANDO ARCHIVO");
+               
                 salida.writeObject(this.archivos_locales);
                 salida.close();
                 return true;
