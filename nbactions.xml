@@ -60,7 +60,7 @@
                 <goal>org.codehaus.mojo:exec-maven-plugin:1.2.1:exec</goal>
             </goals>
             <properties>
-                <exec.args>-classpath %classpath ${packageClassName}</exec.args>
+                <exec.args>-classpath %classpath ${packageClassName} /home/josue/Escritorio/CarpetaSinc/cliente1 localhost</exec.args>
                 <exec.executable>java</exec.executable>
                 <skipTests>true</skipTests>
             </properties>
@@ -108,10 +108,24 @@
                 <goal>org.codehaus.mojo:exec-maven-plugin:1.2.1:exec</goal>
             </goals>
             <properties>
-                <exec.args>-Xdebug -Xrunjdwp:transport=dt_socket,server=n,address=${jpda.address} -classpath %classpath ${packageClassName}</exec.args>
+                <exec.args>-Xdebug -Xrunjdwp:transport=dt_socket,server=n,address=${jpda.address} -classpath %classpath ${packageClassName} /home/josue/Escritorio/CarpetaSinc/cliente1 localhost</exec.args>
                 <exec.executable>java</exec.executable>
                 <jpda.listen>true</jpda.listen>
                 <skipTests>true</skipTests>
+            </properties>
+        </action>
+        <action>
+            <actionName>profile</actionName>
+            <packagings>
+                <packaging>jar</packaging>
+            </packagings>
+            <goals>
+                <goal>process-classes</goal>
+                <goal>org.codehaus.mojo:exec-maven-plugin:1.2.1:exec</goal>
+            </goals>
+            <properties>
+                <exec.args>-classpath %classpath ${packageClassName} /home/josue/Escritorio/CarpetaSinc/cliente1 localhost</exec.args>
+                <exec.executable>java</exec.executable>
             </properties>
         </action>
     </actions>

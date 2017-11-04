@@ -119,7 +119,7 @@ public class Utils_file {
                     .collect(Collectors.toList());
             if (ant.size() > 0) {
                 ArchivoInfo fileInfo = ant.get(0);
-                System.out.println("VERSION: " + fileInfo.getVersion());
+               
                 if (!fileInfo.equals(local)) {
                     local.setModified(true);
                     local.setVersion(fileInfo.getVersion() + 1);
@@ -128,6 +128,8 @@ public class Utils_file {
                 }
             } else {
                 local.setModified(true); //archivo nuevo o se renombro, no estaba en los anteriores.
+                local.setFecha_modificacion(new Date());
+               
             }
         });
 
